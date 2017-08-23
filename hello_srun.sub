@@ -1,0 +1,20 @@
+#!/bin/sh
+
+### --------  SLURM  ----------- ###
+#SBATCH --job-name=testJob
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=3
+#SBATCH --job-name="hello"
+#SBATCH --output="hello_%A_%a_%j.out"
+#SBATCH --error="hello_%A_%a_%j.err"
+##SBATCH --workdir=$HOME/slurm_tutorial
+### -------------------------- ###
+
+# Display all variables set by slurm
+#env | grep "^SLURM" | sort
+
+srun $HOME/slurm_tutorial/hello.sh
+srun $HOME/slurm_tutorial/hello.sh
+srun $HOME/slurm_tutorial/hello.sh
+

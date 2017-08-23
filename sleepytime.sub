@@ -1,0 +1,36 @@
+#!/bin/sh
+
+### --------  SLURM  ----------- ###
+##SBATCH --mail-user=balter@ohsu.edu
+##SBATCH --mail-type=ALL
+#SBATCH --ntasks=1
+#SBATCH --time=2:00:00
+#SBATCH --mem=2G
+
+#SBATCH --job-name=testJob
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --job-name="sleep"
+#SBATCH --array=20-100:20
+#SBATCH --output="sleep_%A_%a_%j.out"
+#SBATCH --error="sleep_%A_%a_%j.err"
+##SBATCH --workdir=$HOME/slurm_tutorial
+### -------------------------- ###
+
+### Display all variables set by slurm
+#env | grep "^SLURM" | sort
+
+### All my commands for job will go here
+
+echo "job name: $SLURM_JOB_NAME"
+echo "SLURM_JOBID: " $SLURM_JOBID
+echo "SLURM_ARRAY_TASK_ID: " $SLURM_ARRAY_TASK_ID
+echo "SLURM_ARRAY_JOB_ID: " $SLURM_ARRAY_JOB_ID
+
+$HOME/slurm_tutorial/sleepytime.sh $SLURM_ARRAY_TASK_ID
+
+### Kill specific array job
+# scancel 1234_9
+### Kill all jobs in array
+# scancel 1234

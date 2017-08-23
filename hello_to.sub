@@ -1,0 +1,26 @@
+#!/bin/sh
+
+### --------  SLURM  ----------- ###
+#SBATCH --job-name=testJob
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --job-name="hello_to"
+#SBATCH --array=0-2
+#SBATCH --output="hello_%A_%a_%j.out"
+#SBATCH --error="hello_%A_%a_%j.err"
+##SBATCH --workdir=$HOME/slurm_tutorial
+### -------------------------- ###
+
+# Display all variables set by slurm
+#env | grep "^SLURM" | sort
+
+## All my commands for job will go here
+
+names=(
+"bob smith"
+"sue jones"
+"larry nelson"
+)
+
+$HOME/slurm_tutorial/hello_to.sh ${names[$SLURM_ARRAY_TASK_ID]}
