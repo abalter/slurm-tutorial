@@ -1,0 +1,170 @@
+#!/bin/bash
+
+#echo "in function interactive"
+
+inital_command="$@"
+
+cpus=""
+mem=""
+exanode=""
+sbatch_options=""
+sbatch_body=""
+execute=true
+conda_env=""
+
+#echo "starting to parse args $@"
+
+OPTIND=
+OPTARG=
+opt=
+sbatch_body="#!/bin/bash
+
+### --------  SLURM  ----------- ###"
+
+while getopts ":m:c:n:t:e:Edvh" opt; do
+    #echo "parsing arg $opt"
+    
+    case "$opt" in
+        h)
+            echo "\
+            usage:
+            ------
+            qsbatch [ -h ] [ -c CUPS ] [ -m MEMORY ] [ -t TIME ] [ -n NODE ] [ -e CONDAENV ] 
+                      [ -E ] [ -d ] [ -v ]
+            
+            description:
+            ------------
+            Submits the command as a batch job by creating a dummy batch file with the specified
+            options. This allows you to have error and log files using slurm environment variables.
+            
+            An added feature is being able to activate a conda environment to run the command in.
+
+            To Do:
+            - Creating work directory and log files directories.
+            - Better at capturing provenance.            
+
+            optional arguments:
+            -------------------
+            -h          Print this help message and exit.
+            -c CPUS     Request CPUS number of cores.
+            -m MEMORY   Request MEMORY amount of RAM. The
+                        default units are megabyts. However
+                        The following suffixes can be used:
+                        [K|M|G|T]
+             -t TIME     Request connection time. Acceptable time formats:
+                            minutes
+                            minutes:seconds
+                            hours:minutes:seconds
+                            days-hours
+                            days-hours:minutes
+                            days-hours:minutes:seconds
+
+            -n NODE     Request a particular child exanode, e.g. 2-5
+            -E          Run the job in the users login environment
+            -e CONDAENV Activate the conda environment CONDAENV
+            -d          Don't execute. Just display command.
+            -v          Print command. Use with dry run to verify command.
+            "
+            execute=false
+            #exit 2
+            ;;
+        c)
+            cpus="$OPTARG"
+            sbatch_options="$sbatch_options --mincpus $cpus"
+            sbatch_body="$sbatch_body
+#SBATCH --mincpus=$cpus" 
+            #echo "cpus=$cpus"
+            ;;
+        m)
+            mem="$OPTARG"
+            sbatch_options="$sbatch_options --mem ${mem}"
+            sbatch_body="$sbatch_body
+#SBATCH --mem=${mem}" 
+            #echo "mem=$mem"
+            ;;
+        n)
+            exanode="$OPTARG"
+            sbatch_options="$sbatch_options --exanodelist \"exaexanode-${exanode}\""
+            sbatch_body="$sbatch_body
+#SBATCH --exanodelist \"exaexanode-${exanode}\""
+            #echo "exanode=$exanode"
+            ;;
+        t)
+            time="$OPTARG"
+            sbatch_options="$sbatch_options --time ${time}"
+            sbatch_body="$sbatch_body
+#SBATCH --time=${time}"
+            #echo "time=$time"
+            ;;                      
+        e)
+            conda_env="$OPTARG"
+            ;;   
+        E)
+            sbatch_body="$sbatch_body
+#SBATCH --get-user-env"
+            ;;
+        d)
+            execute=false
+            ;;
+        v)
+            verbose=true
+            ;;
+        ?)
+            echo "Error: did not recognize option, ${OPTARG}."
+            echo "Please try -h for help."
+            execute=false
+            #exit 1
+            ;;
+    esac
+
+done
+
+shift $(($OPTIND - 1))
+executable=$1
+actual_command=$@
+#echo "actual command: $actual_command"   
+ 
+out="${executable}_%A_%a_%j.out"
+sbatch_options="$sbatch_options --output=$out"
+sbatch_body="$sbatch_body
+#SBATCH --output=$out"
+
+err="${executable}_%A_%a_%j.err"
+sbatch_body="$sbatch_body
+#SBATCH --error=$err"
+sbatch_options="$sbatch_options --error=$err"
+
+sbatch_body="$sbatch_body
+### -------------------------- ###
+
+echo "$initial_command"
+"
+
+if [[ $conda_env != "" ]]; then
+    sbatch_body="$sbatch_body
+source /home/exacloud/tempwork/teamMicrobiome/conda/etc/profile.d/conda.sh
+conda activate $conda_env"
+fi
+
+if [[ $verbose ]]; then
+    echo "batch file:"
+
+    cat<<sbatch_file
+$sbatch_body
+srun $actual_command
+sbatch_file
+
+fi
+
+
+
+if [[ $execute == true ]]; then
+
+    sbatch<<sbatch_file
+$sbatch_body
+srun $actual_command
+sbatch_file
+
+fi
+
+exit 0
